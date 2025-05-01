@@ -23,3 +23,5 @@ The runner then generates and sends the final response based on the outputs from
 
 - Why is runner async?
   Interactions with LLMs and potentially tools (like external APIs) are I/O-bound operations. Using asyncio allows the program to handle these operations efficiently without blocking execution.
+
+* Memory: ToolContext is more manual memory storage i.e. we ask it to store different information while in output_key, it stores the entire string of response
