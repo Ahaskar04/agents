@@ -1,0 +1,25 @@
+1. Create virtual env (python -m venv .venv)
+
+2. Activate (source .venv/bin/activate)
+
+3. Install ADK (pip install google-adk)
+
+4. parent_folder/
+   multi_tool_agent/
+   **init**.py
+   agent.py
+   .env
+
+- The **init**.py file is used to mark a directory as a Python package, enabling you to import modules from that directory
+
+Flow:
+User gives an input message
+The runner gets the session id, message id and the memory for this session and passes this to the Root Agent along with the input text
+The root agent then calls the main agent and delegates the other stuff among agents
+The runner then generates and sends the final response based on the outputs from the agents
+
+- the local RAM implementation of session service is InMemorySessionService
+  APP NAMES are used to segregate session services
+
+- Why is runner async?
+  Interactions with LLMs and potentially tools (like external APIs) are I/O-bound operations. Using asyncio allows the program to handle these operations efficiently without blocking execution.
