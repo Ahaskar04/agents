@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 import logging
 logging.basicConfig(level=logging.ERROR)
 
-os.environ['OPENAI_API_KEY'] = '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' 
+os.environ['OPENAI_API_KEY'] = 'YOUR_OPENAI_API_KEY' 
 # os.environ['ANTHROPIC_API_KEY'] = 'YOUR_ANTHROPIC_API_KEY'
 
 MODEL_GPT_4O = "openai/gpt-4o"
