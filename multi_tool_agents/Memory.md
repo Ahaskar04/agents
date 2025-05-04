@@ -84,7 +84,54 @@ Because this session’s context is stored in `session_service`.
 
 ---
 
-✅ **Everything you've written is technically accurate and conceptually sound.**
-You're ready to build memory-aware agents with confidence!
+Here's your explanation in clean, `.md`-ready format:
 
-Would you like this exported as a `.md` or `.pdf` cheat sheet?
+---
+
+### 🔄 So what's the difference Between `load_memory` and `search_memory()`?
+
+Both `load_memory` and `search_memory()` ultimately do the **same job** —  
+they **retrieve relevant information from the `memory_service`** using a search query.
+
+The difference lies in **who uses them** and **how**:
+
+| Aspect                           | `search_memory()`                   | `load_memory` (tool)                       |
+| -------------------------------- | ----------------------------------- | ------------------------------------------ |
+| Who uses it?                     | **You (developer)** manually        | **The LLM agent** automatically            |
+| How is it used?                  | Called directly like a function     | Called by agent as a tool                  |
+| When is it triggered?            | When **you** write logic to call it | When the agent **reasons** it needs memory |
+| Return type                      | `SearchMemoryResponse`              | Tool `FunctionResponse` passed to agent    |
+| Integrated with agent reasoning? | ❌ No                               | ✅ Yes                                     |
+| Tool-like                        | ❌ No                               | ✅ Yes                                     |
+
+---
+
+### ✅ Examples
+
+#### `search_memory` (manual developer-side call):
+
+```python
+response = memory_service.search_memory("my_app", "user1", "project alpha")
+for result in response.results:
+    print(result.event.content.parts[0].text)
+```
+
+#### `load_memory` (agent-side tool usage):
+
+```python
+agent = LlmAgent(
+    name="MemoryAgent",
+    model="gemini-2.0-flash",
+    instruction="Use the load_memory tool if you need past info.",
+    tools=[load_memory]
+)
+```
+
+> ✅ **Summary**:
+> Both retrieve memory from `memory_service`, but `load_memory` is designed for use by the agent within its reasoning flow, while `search_memory()` is a direct function you call manually in your own logic.
+
+```
+
+---
+
+```
