@@ -47,61 +47,90 @@ print(f"✅ Session '{SESSION_ID_STATEFUL}' created for user '{USER_ID_STATEFUL}
 
 def numeric_solver(
     expression: str,
-    precision: int = 3
-) -> dict:
-    """
-    Evaluate a simple math expression numerically.
+    variables: Optional[Dict[str, float]] = None,
+    unit_hint: Optional[str] = None,
+    precision: int = 3,
+) -> Dict[str, Any]:
+    """Evaluate an algebraic *expression* numerically.
 
     Parameters
     ----------
     expression : str
-        A valid Python expression (e.g., "sin(30)", "5**2 + 7").
-    precision : int
-        Decimal places to round the result.
+        A valid Python/SymPy friendly expression (e.g. "v**2/(2*g)").
+    variables : Dict[str, float]
+        Substitutions mapping each symbol name to its numeric value. Angles are
+        assumed **degrees** and will be converted to radians automatically in
+        `sin`, `cos`, and `tan`.
+    unit_hint : str, optional
+        Plain‑text unit string appended to the result (e.g. "m", "N s").
+    precision : int, default 3
+        Number of decimal places to round the final answer.
 
     Returns
     -------
-    dict with keys: result, latex, steps
+    dict
+        {"result": float, "unit": str | None, "latex": str, "steps": List[str]}
     """
-    # Safe context for math functions (angles in degrees)
-    safe_locals = {
+
+    # -------------------------- Helper: safe eval context -------------------------- #
+    safe_locals = {  # trig functions expect radians, wrap degree→rad conversion
         "sin": lambda x: sin(radians(x)),
         "cos": lambda x: cos(radians(x)),
         "tan": lambda x: tan(radians(x)),
         "log": log,
         "exp": exp,
         "sqrt": sqrt,
+        **variables,  # direct numeric subs: v, theta, g, etc.
     }
 
-    steps = []
+    steps: List[str] = []
 
-    # Step 1: Evaluate
+    # Build substitution string for logging
+    subs_str = ", ".join(f"{k}={v}" for k, v in variables.items())
+    steps.append(f"Substituted values: {subs_str}")
+
+    # Evaluate numerically using Python's eval in the restricted namespace.
     try:
-        value = float(eval(expression, {"__builtins__": {}}, safe_locals))
-    except Exception as e:
-        return {"error": f"Failed to evaluate: {e}"}
+        numeric_val: float = float(eval(expression, {"__builtins__": {}}, safe_locals))
+    except Exception as exc:  # pragma: no cover – edge cases
+        return {"error": f"Numeric evaluation failed: {exc}"}
 
-    steps.append(f"Evaluated: {expression} → {value}")
+    steps.append(f"Evaluated expression: {expression} → {numeric_val}")
 
-    # Step 2: Round
-    rounded_val = round(value, precision)
-    steps.append(f"Rounded to {precision} dp → {rounded_val}")
+    # Round to requested precision
+    numeric_val = round(numeric_val, precision)
+    steps.append(f"Rounded to {precision} dp → {numeric_val}{unit_hint or ''}")
 
-    # Step 3: Generate LaTeX (optional)
-    if sp:
+    # Build LaTeX (optional – only if SymPy present)
+    if sp is not None:
         try:
-            latex_expr = sp.latex(sp.sympify(expression))
-            latex_result = rf"{latex_expr} = {rounded_val}"
+            expr_sympy = sp.sympify(expression)
+            latex_form = sp.latex(expr_sympy.subs(variables))
+            latex_result = rf"{latex_form} \;=\; {numeric_val}"
+            if unit_hint:
+                latex_result += rf"\,\text{{{unit_hint}}}"
         except Exception:
-            latex_result = rf"{rounded_val}"
+            latex_result = rf"{numeric_val}\,{unit_hint or ''}"
     else:
-        latex_result = rf"{rounded_val}"
+        latex_result = rf"{numeric_val}\,{unit_hint or ''}"
+
+    # Pint for units (optional)
+    if pint and unit_hint:
+        try:
+            ureg = pint.UnitRegistry()
+            quantity = numeric_val * ureg(unit_hint)
+            numeric_val = quantity.to_base_units().magnitude  # type: ignore
+            steps.append("Converted to base SI units using Pint ➜ " + str(quantity.to_base_units()))
+        except Exception:
+            steps.append("⚠️  Unable to parse units with Pint – returning raw value.")
 
     return {
-        "result": rounded_val,
+        "result": numeric_val,
+        "unit": unit_hint,
         "latex": latex_result,
-        "steps": steps
+        "steps": steps,
     }
+
 
 
 
