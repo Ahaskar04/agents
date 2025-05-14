@@ -51,6 +51,9 @@ def numeric_solver(
     unit_hint: Optional[str] = None,
     precision: int = 3,
 ) -> Dict[str, Any]:
+    if variables is None:
+        variables = {}
+
     """Evaluate an algebraic *expression* numerically.
 
     Parameters
