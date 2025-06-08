@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>LiveKit Dynamic Token Demo</title>
+    <style>
+      /* Basic styling for chat */
+      #chatContainer {
+        border: 1px solid #ccc;
+        padding: 10px;
+        width: 400px;
+        height: 200px;
+        overflow-y: auto;
+        margin-top: 20px;
+        font-family: sans-serif;
+        background: #f9f9f9;
+      }
+      #chatInput {
+        width: 300px;
+        padding: 5px;
+      }
+      #sendBtn {
+        padding: 5px 10px;
+      }
+      .message {
+        margin: 4px 0;
+      }
+      .message .sender {
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Join LiveKit Room</h1>
+
+    <label>Identity: <input type="text" id="identityInput" /></label><br />
+    <label>Name: <input type="text" id="nameInput" /></label><br />
+    <button id="joinBtn">Join Room</button>
+    <button id="muteBtn">Mute Mic</button>
+
+    <!-- Local video -->
+    <video
+      id="localVideo"
+      autoplay
+      muted
+      playsinline
+      style="width: 400px; border: 1px solid black; margin-top: 10px;"
+    ></video>
+
+    <!-- Container for remote participant videos -->
+    <div
+      id="remoteVideos"
+      style="display: flex; gap: 10px; margin-top: 20px;"
+    ></div>
+
+    <!-- Chat panel -->
+    <div id="chatContainer"></div>
+    <input type="text" id="chatInput" placeholder="Type a message…" />
+    <button id="sendBtn">Send</button>
+
+    <script type="module" src="app.jsx"></script>
+  </body>
+</html>
