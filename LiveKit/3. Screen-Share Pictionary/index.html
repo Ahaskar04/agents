@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>LiveKit Screen-Share Pictionary</title>
+    <style>
+      body { font-family: sans-serif; }
+      video, canvas { border: 1px solid #444; margin: 10px; }
+      #controls button { margin-right: 8px; }
+      #canvases { display: flex; gap: 20px; }
+    </style>
+  </head>
+  <body>
+    <h1>Screen-Share Pictionary</h1>
+
+    <div id="controls">
+      <label>Identity: <input type="text" id="identityInput" /></label>
+      <label>Name:     <input type="text" id="nameInput" /></label>
+      <button id="joinBtn">Join Room</button>
+      <button id="shareBtn" disabled>Start Screen Share</button>
+    </div>
+
+    <div id="videos">
+      <video id="localVideo" autoplay muted playsinline width="300"></video>
+      <div id="remoteVideos"></div>
+    </div>
+
+    <div id="canvases">
+      <div>
+        <h3>Your Drawing</h3>
+        <canvas id="drawLocal" width="400" height="300"></canvas>
+      </div>
+      <div>
+        <h3>Remote Drawing</h3>
+        <canvas id="drawRemote" width="400" height="300"></canvas>
+      </div>
+    </div>
+
+    <script type="module" src="app.jsx"></script>
+  </body>
+</html>
