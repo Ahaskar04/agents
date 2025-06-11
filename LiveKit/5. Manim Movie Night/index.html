@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Manim Movie Night</title>
   <style>
     body {
@@ -26,7 +26,7 @@
     video { max-width: 100%; height: auto; border-radius: 4px; }
     .participants { background: #1a1a1a; padding: 15px; border-radius: 4px; margin-top: 20px; }
     .participant { display: inline-block; margin: 5px; padding: 5px 10px; background: #2a2a2a; border-radius: 4px; }
-    .instructions { background: #1a3a1a; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #4aff4a; }
+    .instructions { background: #1a3a1a; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4aff4a; }
   </style>
 
   <!-- 1) Load LiveKit UMD bundle (deferred) -->
@@ -87,23 +87,20 @@
 
   <!-- 2) Inline logic runs after UMD is loaded -->
   <script>
-    // Ensure DOM and UMD bundle are ready
     window.addEventListener('DOMContentLoaded', () => {
-      // Confirm the global exists
       if (typeof window.LivekitClient === 'undefined') {
         console.error('LivekitClient global is missing!');
         document.getElementById('status').textContent = 'Error: LiveKit SDK missing';
         return;
       }
 
-      // Grab elements
-      const statusDiv = document.getElementById('status');
-      const createBtn = document.getElementById('createRoomBtn');
-      const joinBtn = document.getElementById('joinBtn');
-      const leaveBtn = document.getElementById('leaveBtn');
-      const nameInput = document.getElementById('nameInput');
-      const animationSelect = document.getElementById('animationSelect');
-      const videoContainer = document.querySelector('.video-container');
+      const statusDiv        = document.getElementById('status');
+      const createBtn        = document.getElementById('createRoomBtn');
+      const joinBtn          = document.getElementById('joinBtn');
+      const leaveBtn         = document.getElementById('leaveBtn');
+      const nameInput        = document.getElementById('nameInput');
+      const animationSelect  = document.getElementById('animationSelect');
+      const videoContainer   = document.querySelector('.video-container');
       const participantsList = document.getElementById('participantsList');
 
       function updateStatus(msg, isError = false) {
@@ -114,14 +111,14 @@
 
       const SERVER_URL = 'http://localhost:5000';
       const LIVEKIT_URL = 'wss://solvd-x191iqhu.livekit.cloud';
-      let room = null;
-      let currentRoom = null;
+      let room = null, currentRoom = null;
 
       async function createRoom() {
         try {
           updateStatus('Creating room...');
           const resp = await fetch(`${SERVER_URL}/createMovieRoom`, {
-            method: 'POST', headers: {'Content-Type':'application/json'},
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ animation: animationSelect.value })
           });
           const data = await resp.json();
@@ -152,9 +149,7 @@
           createBtn.disabled = true;
           joinBtn.disabled = true;
           leaveBtn.disabled = false;
-        } catch (e) {
-          updateStatus(e.message, true);
-        }
+        } catch (e) { updateStatus(e.message, true); }
       }
 
       function setupRoomEvents() {
@@ -167,18 +162,26 @@
             updateStatus(`Receiving video from ${participant.identity}`);
           }
         });
-        room.on(LivekitClient.RoomEvent.ParticipantConnected,
-          updateParticipants);
-        room.on(LivekitClient.RoomEvent.ParticipantDisconnected,
-          updateParticipants);
+        room.on(LivekitClient.RoomEvent.ParticipantConnected,    updateParticipants);
+        room.on(LivekitClient.RoomEvent.ParticipantDisconnected, updateParticipants);
         room.on(LivekitClient.RoomEvent.Disconnected, () => {
           updateStatus('Disconnected');
           resetUI();
         });
       }
 
+      // —— Safe, crash-free participant update —— 
       function updateParticipants() {
-        const parts = [room.localParticipant, ...room.participants.values()];
+        const parts = [];
+        if (room?.localParticipant) {
+          parts.push(room.localParticipant);
+        }
+        if (room?.participants && typeof room.participants.values === 'function') {
+          for (const p of room.participants.values()) {
+            if (p) parts.push(p);
+          }
+        }
+
         participantsList.innerHTML = '';
         if (parts.length === 0) {
           participantsList.innerHTML = '<span class="participant">No one in room yet</span>';
@@ -199,15 +202,16 @@
 
       function resetUI() {
         createBtn.disabled = false;
-        joinBtn.disabled = true;
-        leaveBtn.disabled = true;
+        joinBtn.disabled   = true;
+        leaveBtn.disabled  = true;
         videoContainer.innerHTML = '<div id="videoPlaceholder"><p>Video will appear here</p></div>';
         participantsList.innerHTML = '<span class="participant">No one in room yet</span>';
       }
 
       createBtn.addEventListener('click', createRoom);
-      joinBtn.addEventListener('click', joinRoom);
-      leaveBtn.addEventListener('click', leaveRoom);
+      joinBtn.addEventListener('click',   joinRoom);
+      leaveBtn.addEventListener('click',  leaveRoom);
+
       updateStatus('Ready to create a room');
     });
   </script>
