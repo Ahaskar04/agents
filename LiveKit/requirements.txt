@@ -1,3 +1,4 @@
 livekit-api
 flask
 flask-cors
+opencv-python

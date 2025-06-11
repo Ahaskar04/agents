@@ -1,0 +1,38 @@
+{
+  "animation": "projectile",
+  "duration": 38,
+  "narration": [
+    {
+      "time": 1.0,
+      "text": "Welcome! Today we'll explore projectile motion with a ball thrown upward at 20 meters per second."
+    },
+    {
+      "time": 5.0,
+      "text": "Let's start with a ball positioned on the ground."
+    },
+    {
+      "time": 8.5,
+      "text": "The ball is thrown upward with an initial velocity of 20 meters per second."
+    },
+    {
+      "time": 13.5,
+      "text": "Watch carefully as the ball follows a parabolic path. This curved trajectory is caused by gravity acting downward while the ball maintains its horizontal velocity."
+    },
+    {
+      "time": 19.5,
+      "text": "At the highest point of its journey, the ball reaches a maximum height of 20.4 meters above the ground."
+    },
+    {
+      "time": 24.0,
+      "text": "Notice that at the peak, the vertical velocity becomes zero, while the horizontal component remains unchanged."
+    },
+    {
+      "time": 29.0,
+      "text": "We can calculate this maximum height using the kinematic equation: h equals v-naught squared divided by 2g."
+    },
+    {
+      "time": 34.5,
+      "text": "This demonstrates the fundamental principle of projectile motion: horizontal and vertical components act independently of each other."
+    }
+  ]
+}

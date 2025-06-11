@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manim Movie Night</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #0f0f0f;
+      color: #e0e0e0;
+    }
+    h1 { color: #4a9eff; text-align: center; }
+    .controls { background: #1a1a1a; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    .control-group { margin-bottom: 15px; }
+    label { display: inline-block; width: 120px; margin-right: 10px; }
+    input, select { padding: 8px; border-radius: 4px; border: 1px solid #333; background: #2a2a2a; color: #e0e0e0; min-width: 200px; }
+    button { background: #4a9eff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px; font-size: 16px; }
+    button:hover { background: #357abd; }
+    button:disabled { background: #666; cursor: not-allowed; }
+    #status { background: #1a1a1a; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #4a9eff; }
+    .video-container { background: black; border-radius: 8px; padding: 20px; text-align: center; min-height: 400px; display: flex; align-items: center; justify-content: center; }
+    video { max-width: 100%; height: auto; border-radius: 4px; }
+    .participants { background: #1a1a1a; padding: 15px; border-radius: 4px; margin-top: 20px; }
+    .participant { display: inline-block; margin: 5px; padding: 5px 10px; background: #2a2a2a; border-radius: 4px; }
+    .instructions { background: #1a3a1a; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #4aff4a; }
+  </style>
+
+  <!-- 1) Load LiveKit UMD bundle (deferred) -->
+  <script
+    defer
+    src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"
+    crossorigin="anonymous"
+    onerror="console.error('LiveKit UMD failed to load')"
+  ></script>
+</head>
+<body>
+  <h1>🎬 Manim Movie Night</h1>
+  <div class="instructions">
+    <strong>How it works:</strong>
+    <ol>
+      <li>Choose your name and select an animation</li>
+      <li>Click "Create Room" to set up a movie room</li>
+      <li>Click "Join Room" to enter and watch</li>
+      <li>The Movie Night Agent will automatically start streaming the video with narration!</li>
+    </ol>
+  </div>
+
+  <div class="controls">
+    <h2>Room Controls</h2>
+    <div class="control-group">
+      <label for="nameInput">Your Name:</label>
+      <input type="text" id="nameInput" placeholder="Enter your name" value="Student">
+    </div>
+    <div class="control-group">
+      <label for="animationSelect">Animation:</label>
+      <select id="animationSelect">
+        <option value="projectile">Projectile Motion</option>
+        <option value="pendulum">Pendulum (Coming Soon)</option>
+        <option value="waves">Wave Motion (Coming Soon)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <button id="createRoomBtn">Create Room</button>
+      <button id="joinBtn" disabled>Join Room</button>
+      <button id="leaveBtn" disabled>Leave Room</button>
+    </div>
+  </div>
+
+  <div id="status">Status: Not connected</div>
+
+  <div class="video-container">
+    <div id="videoPlaceholder">
+      <p>Video will appear here when you join a room</p>
+    </div>
+  </div>
+
+  <div class="participants">
+    <h3>Participants</h3>
+    <div id="participantsList">
+      <span class="participant">No one in room yet</span>
+    </div>
+  </div>
+
+  <!-- 2) Inline logic runs after UMD is loaded -->
+  <script>
+    // Ensure DOM and UMD bundle are ready
+    window.addEventListener('DOMContentLoaded', () => {
+      // Confirm the global exists
+      if (typeof window.LivekitClient === 'undefined') {
+        console.error('LivekitClient global is missing!');
+        document.getElementById('status').textContent = 'Error: LiveKit SDK missing';
+        return;
+      }
+
+      // Grab elements
+      const statusDiv = document.getElementById('status');
+      const createBtn = document.getElementById('createRoomBtn');
+      const joinBtn = document.getElementById('joinBtn');
+      const leaveBtn = document.getElementById('leaveBtn');
+      const nameInput = document.getElementById('nameInput');
+      const animationSelect = document.getElementById('animationSelect');
+      const videoContainer = document.querySelector('.video-container');
+      const participantsList = document.getElementById('participantsList');
+
+      function updateStatus(msg, isError = false) {
+        statusDiv.textContent = `Status: ${msg}`;
+        statusDiv.style.borderLeftColor = isError ? '#ff4a4a' : '#4a9eff';
+        console.log(msg);
+      }
+
+      const SERVER_URL = 'http://localhost:5000';
+      const LIVEKIT_URL = 'wss://solvd-x191iqhu.livekit.cloud';
+      let room = null;
+      let currentRoom = null;
+
+      async function createRoom() {
+        try {
+          updateStatus('Creating room...');
+          const resp = await fetch(`${SERVER_URL}/createMovieRoom`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ animation: animationSelect.value })
+          });
+          const data = await resp.json();
+          if (data.success) {
+            currentRoom = data.room;
+            updateStatus(`Room created: ${currentRoom}`);
+            joinBtn.disabled = false;
+          } else throw new Error(data.message || 'createMovieRoom failed');
+        } catch (e) { updateStatus(e.message, true); }
+      }
+
+      async function joinRoom() {
+        try {
+          updateStatus('Connecting...');
+          const identity = `user-${Date.now()}`;
+          const tokenRes = await fetch(
+            `${SERVER_URL}/getToken?identity=${identity}&name=${encodeURIComponent(nameInput.value)}&room=${currentRoom}`
+          );
+          const token = await tokenRes.text();
+
+          room = new LivekitClient.Room({ adaptiveStream: true });
+          setupRoomEvents();
+          await room.connect(LIVEKIT_URL, token);
+          await room.localParticipant.setCameraEnabled(false);
+          await room.localParticipant.setMicrophoneEnabled(false);
+
+          updateStatus(`Connected to ${currentRoom}`);
+          createBtn.disabled = true;
+          joinBtn.disabled = true;
+          leaveBtn.disabled = false;
+        } catch (e) {
+          updateStatus(e.message, true);
+        }
+      }
+
+      function setupRoomEvents() {
+        room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, _, participant) => {
+          if (track.kind === 'video') {
+            videoContainer.innerHTML = '';
+            const el = track.attach();
+            el.style.width = '100%';
+            videoContainer.appendChild(el);
+            updateStatus(`Receiving video from ${participant.identity}`);
+          }
+        });
+        room.on(LivekitClient.RoomEvent.ParticipantConnected,
+          updateParticipants);
+        room.on(LivekitClient.RoomEvent.ParticipantDisconnected,
+          updateParticipants);
+        room.on(LivekitClient.RoomEvent.Disconnected, () => {
+          updateStatus('Disconnected');
+          resetUI();
+        });
+      }
+
+      function updateParticipants() {
+        const parts = [room.localParticipant, ...room.participants.values()];
+        participantsList.innerHTML = '';
+        if (parts.length === 0) {
+          participantsList.innerHTML = '<span class="participant">No one in room yet</span>';
+        } else {
+          parts.forEach(p => {
+            const span = document.createElement('span');
+            span.className = 'participant';
+            span.textContent = p.name || p.identity;
+            participantsList.appendChild(span);
+          });
+        }
+      }
+
+      async function leaveRoom() {
+        if (room) await room.disconnect();
+        resetUI();
+      }
+
+      function resetUI() {
+        createBtn.disabled = false;
+        joinBtn.disabled = true;
+        leaveBtn.disabled = true;
+        videoContainer.innerHTML = '<div id="videoPlaceholder"><p>Video will appear here</p></div>';
+        participantsList.innerHTML = '<span class="participant">No one in room yet</span>';
+      }
+
+      createBtn.addEventListener('click', createRoom);
+      joinBtn.addEventListener('click', joinRoom);
+      leaveBtn.addEventListener('click', leaveRoom);
+      updateStatus('Ready to create a room');
+    });
+  </script>
+</body>
+</html>
