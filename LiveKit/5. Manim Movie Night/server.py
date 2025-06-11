@@ -85,8 +85,10 @@ def create_movie_room():
     data = request.json or {}
     animation = data.get('animation', 'projectile')
     
-    # Create room name
-    room_name = f"movie-{animation}"
+    import random, string
+    suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+
+    room_name = f"movie-{animation}-{suffix}"
     
     logger.info(f"Creating movie room: {room_name}")
     
@@ -116,7 +118,7 @@ async def start_movie():
     a room is created and matches the agent's configuration.
     """
     data = request.json or {}
-    room_name = data.get('room', 'movie-projectile')
+    room_name = data.get('room', 'movie-projectile2')
     
     logger.info(f"Starting movie in room: {room_name}")
     
