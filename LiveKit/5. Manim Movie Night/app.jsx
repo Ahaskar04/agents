@@ -33,7 +33,7 @@ function MovieNightApp() {
   const [participants, setParticipants] = useState([]);
   const [status, setStatus] = useState('Ready to create a room');
   const [videoTrack, setVideoTrack] = useState(null);
-  const [audioTracks, setAudioTracks] = useState([]);
+  const [audioTracks, setAudioTracks] = useState([]); // we'll store {track, el}
   
   // Form state
   const [userName, setUserName] = useState('Student');
@@ -140,11 +140,14 @@ function MovieNightApp() {
         setStatus(`Receiving video from ${participant.identity}`);
       }
       
-      // Handle audio tracks (the narration)
+      // Handle audio tracks (the narration) - NEW AUDIO branch
       if (track.kind === Track.Kind.Audio) {
-        // Audio tracks play automatically when attached
-        // But we'll track them for volume control if needed
-        setAudioTracks(prev => [...prev, track]);
+        const el = track.attach();           // create <audio>
+        el.autoplay  = true;
+        el.controls  = false;
+        el.style.display = 'none';           // keep page clean
+        document.body.appendChild(el);       // hidden
+        setAudioTracks(prev => [...prev, { track, el }]); // <-- fixed typo & store el
         console.log(`Audio narration started from ${participant.identity}`);
       }
     });
@@ -161,8 +164,10 @@ function MovieNightApp() {
         setStatus('Video ended');
       }
       
+      // detach audio when it ends
       if (track.kind === Track.Kind.Audio) {
-        setAudioTracks(prev => prev.filter(t => t !== track));
+        track.detach().forEach((el) => el.remove());
+        setAudioTracks(prev => prev.filter(t => t.track !== track));
       }
     });
     

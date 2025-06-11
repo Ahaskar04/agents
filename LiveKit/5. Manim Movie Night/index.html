@@ -26,7 +26,7 @@
     video { max-width: 100%; height: auto; border-radius: 4px; }
     .participants { background: #1a1a1a; padding: 15px; border-radius: 4px; margin-top: 20px; }
     .participant { display: inline-block; margin: 5px; padding: 5px 10px; background: #2a2a2a; border-radius: 4px; }
-    .instructions { background: #1a3a1a; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4aff4a; }
+    .instructions { background: #1a3a1a; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #4aff4a; }
   </style>
 
   <!-- 1) Load LiveKit UMD bundle (deferred) -->
@@ -154,6 +154,7 @@
 
       function setupRoomEvents() {
         room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, _, participant) => {
+          // VIDEO branch – unchanged
           if (track.kind === 'video') {
             videoContainer.innerHTML = '';
             const el = track.attach();
@@ -161,7 +162,25 @@
             videoContainer.appendChild(el);
             updateStatus(`Receiving video from ${participant.identity}`);
           }
+
+          // NEW AUDIO branch
+          if (track.kind === 'audio') {
+            const el = track.attach();   // creates <audio>
+            el.autoplay  = true;         // make sure it plays
+            el.controls  = false;        // no UI
+            el.style.display = 'none';   // keep page clean
+            document.body.appendChild(el);
+            updateStatus(`Receiving audio from ${participant.identity}`);
+          }
         });
+
+        // detach audio elements when track ends
+        room.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
+          if (track.kind === 'audio') {
+            track.detach().forEach((el) => el.remove());
+          }
+        });
+
         room.on(LivekitClient.RoomEvent.ParticipantConnected,    updateParticipants);
         room.on(LivekitClient.RoomEvent.ParticipantDisconnected, updateParticipants);
         room.on(LivekitClient.RoomEvent.Disconnected, () => {
