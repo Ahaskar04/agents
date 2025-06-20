@@ -27,9 +27,40 @@
     .participants { background: #1a1a1a; padding: 15px; border-radius: 4px; margin-top: 20px; }
     .participant { display: inline-block; margin: 5px; padding: 5px 10px; background: #2a2a2a; border-radius: 4px; }
     .instructions { background: #1a3a1a; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #4aff4a; }
+    
+    /* ← NEW: Play button styles */
+    .play-control { 
+      text-align: center; 
+      margin: 20px 0; 
+      display: none; /* Hidden by default */
+    }
+    .play-button {
+      background: #4CAF50 !important;
+      font-size: 1.2rem;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .play-button:hover {
+      background: #45a049 !important;
+    }
+    
+    /* ← NEW: Video placeholder styles */
+    .video-placeholder {
+      width: 100%;
+      max-width: 800px;
+      height: 400px;
+      background-color: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      color: #666;
+    }
   </style>
 
-  <!-- 1) Load LiveKit UMD bundle (deferred) -->
+  <!-- Load LiveKit UMD bundle -->
   <script
     defer
     src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"
@@ -44,8 +75,8 @@
     <ol>
       <li>Choose your name and select an animation</li>
       <li>Click "Create Room" to set up a movie room</li>
-      <li>Click "Join Room" to enter and watch</li>
-      <li>The Movie Night Agent will automatically start streaming the video with narration!</li>
+      <li>Click "Join Room" to enter and wait for content</li>
+      <li>Click "Play" when ready to start the animation with narration!</li>
     </ol>
   </div>
 
@@ -59,8 +90,8 @@
       <label for="animationSelect">Animation:</label>
       <select id="animationSelect">
         <option value="projectile">Projectile Motion</option>
-        <option value="pendulum">Pendulum (Coming Soon)</option>
-        <option value="waves">Wave Motion (Coming Soon)</option>
+        <option value="pendulum">Pendulum</option>
+        <option value="waves">Wave Motion</option>
       </select>
     </div>
     <div class="control-group">
@@ -72,9 +103,14 @@
 
   <div id="status">Status: Not connected</div>
 
-  <div class="video-container">
-    <div id="videoPlaceholder">
-      <p>Video will appear here when you join a room</p>
+  <!-- ← NEW: Play button (hidden by default) -->
+  <div class="play-control" id="playControl">
+    <button class="play-button" id="playBtn">▶️ Play Animation & Narration</button>
+  </div>
+
+  <div class="video-container" id="videoContainer">
+    <div class="video-placeholder" id="videoPlaceholder">
+      <p>Video will appear here when you click Play</p>
     </div>
   </div>
 
@@ -85,7 +121,6 @@
     </div>
   </div>
 
-  <!-- 2) Inline logic runs after UMD is loaded -->
   <script>
     window.addEventListener('DOMContentLoaded', () => {
       if (typeof window.LivekitClient === 'undefined') {
@@ -98,9 +133,11 @@
       const createBtn        = document.getElementById('createRoomBtn');
       const joinBtn          = document.getElementById('joinBtn');
       const leaveBtn         = document.getElementById('leaveBtn');
+      const playBtn          = document.getElementById('playBtn');  // ← NEW
+      const playControl      = document.getElementById('playControl');  // ← NEW
       const nameInput        = document.getElementById('nameInput');
       const animationSelect  = document.getElementById('animationSelect');
-      const videoContainer   = document.querySelector('.video-container');
+      const videoContainer   = document.getElementById('videoContainer');
       const participantsList = document.getElementById('participantsList');
 
       function updateStatus(msg, isError = false) {
@@ -112,6 +149,12 @@
       const SERVER_URL = 'http://localhost:5000';
       const LIVEKIT_URL = 'wss://solvd-x191iqhu.livekit.cloud';
       let room = null, currentRoom = null;
+      
+      // ← NEW: Track state for play functionality
+      let videoTrack = null;
+      let audioTracks = [];
+      let isReadyToPlay = false;
+      let isPlaying = false;
 
       async function createRoom() {
         try {
@@ -154,30 +197,27 @@
 
       function setupRoomEvents() {
         room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, _, participant) => {
-          // VIDEO branch – unchanged
+          // ← CHANGED: Collect tracks but don't attach them immediately
           if (track.kind === 'video') {
-            videoContainer.innerHTML = '';
-            const el = track.attach();
-            el.style.width = '100%';
-            videoContainer.appendChild(el);
-            updateStatus(`Receiving video from ${participant.identity}`);
+            videoTrack = track;
+            updateStatus(`Video ready from ${participant.identity}`);
+            checkReadyToPlay();  // ← NEW
           }
 
-          // NEW AUDIO branch
           if (track.kind === 'audio') {
-            const el = track.attach();   // creates <audio>
-            el.autoplay  = true;         // make sure it plays
-            el.controls  = false;        // no UI
-            el.style.display = 'none';   // keep page clean
-            document.body.appendChild(el);
-            updateStatus(`Receiving audio from ${participant.identity}`);
+            audioTracks.push(track);
+            updateStatus(`Audio ready from ${participant.identity}`);
+            checkReadyToPlay();  // ← NEW
           }
         });
 
-        // detach audio elements when track ends
         room.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
+          if (track.kind === 'video') {
+            videoTrack = null;
+          }
           if (track.kind === 'audio') {
             track.detach().forEach((el) => el.remove());
+            audioTracks = audioTracks.filter(t => t !== track);
           }
         });
 
@@ -189,7 +229,40 @@
         });
       }
 
-      // —— Safe, crash-free participant update —— 
+      // ← NEW: Check if ready to show Play button
+      function checkReadyToPlay() {
+        if ((videoTrack || audioTracks.length > 0) && !isPlaying) {
+          isReadyToPlay = true;
+          playControl.style.display = 'block';
+        }
+      }
+
+      // ← NEW: Handle Play button click
+      function handlePlay() {
+        // Attach video track
+        if (videoTrack) {
+          videoContainer.innerHTML = '';
+          const videoEl = videoTrack.attach();
+          videoEl.style.width = '100%';
+          videoEl.autoPlay = true;
+          videoEl.playsInline = true;
+          videoContainer.appendChild(videoEl);
+        }
+
+        // Attach audio tracks (hidden)
+        audioTracks.forEach(track => {
+          const audioEl = track.attach();
+          audioEl.autoplay = true;
+          audioEl.controls = false;
+          audioEl.style.display = 'none';
+          document.body.appendChild(audioEl);
+        });
+
+        isPlaying = true;
+        playControl.style.display = 'none';
+        updateStatus('Playing animation 🎬');
+      }
+
       function updateParticipants() {
         const parts = [];
         if (room?.localParticipant) {
@@ -209,6 +282,9 @@
             const span = document.createElement('span');
             span.className = 'participant';
             span.textContent = p.name || p.identity;
+            if (p.identity === 'agent' || p.name === 'Movie Night Agent') {
+              span.textContent += ' 🤖';
+            }
             participantsList.appendChild(span);
           });
         }
@@ -219,17 +295,26 @@
         resetUI();
       }
 
+      // ← CHANGED: Reset play state as well
       function resetUI() {
         createBtn.disabled = false;
         joinBtn.disabled   = true;
         leaveBtn.disabled  = true;
-        videoContainer.innerHTML = '<div id="videoPlaceholder"><p>Video will appear here</p></div>';
+        playControl.style.display = 'none';  // ← NEW
+        videoContainer.innerHTML = '<div class="video-placeholder"><p>Video will appear here when you click Play</p></div>';
         participantsList.innerHTML = '<span class="participant">No one in room yet</span>';
+        
+        // Reset play state
+        videoTrack = null;
+        audioTracks = [];
+        isReadyToPlay = false;
+        isPlaying = false;
       }
 
       createBtn.addEventListener('click', createRoom);
       joinBtn.addEventListener('click',   joinRoom);
       leaveBtn.addEventListener('click',  leaveRoom);
+      playBtn.addEventListener('click',   handlePlay);  // ← NEW
 
       updateStatus('Ready to create a room');
     });
